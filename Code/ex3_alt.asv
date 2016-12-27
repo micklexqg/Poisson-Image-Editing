@@ -9,6 +9,6 @@ f(f < 0) = 0;
 [bw_row, bw_col, ~] = find(bw);
 target_index = sub2ind(size(I), bw_row, bw_col);
 source_index = sub2ind(size(I), bw_row-50, bw_col-50);
-I = poissonSolver(I, I, bw, source_index, target_index);
+I = poissonSolver(
 imagesc(I)
 axis image

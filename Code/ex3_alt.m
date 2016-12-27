@@ -1,27 +1,32 @@
-close all
-
 I = double(rgb2gray(imread('tom_hanks.jpg')))/255;
-I_orig = I;
 
 % region specification
-fig = figure;
 [bw, xi, yi] = roipoly(I);
 bwi = 1 - bw;
 
+f = I - bwi;
+f(f < 0) = 0;
 [bw_row, bw_col, ~] = find(bw);
-domain_index = sub2ind(size(I), bw_row, bw_col);
+target_index = sub2ind(size(I), bw_row, bw_col);
+source_index = sub2ind(size(I), bw_row-50, bw_col-50);
 
 %% building b
-% boundary pixels
+
+% guidance field v_pq = g_p - g_q
+filter = [0 -1 0; -1 4 -1; 0 -1 0];
+sum_v_neighbours = imfilter(I, filter, 'replicate');
+v_val = sum_v_neighbours(source_index);
+
+% sum fstar
 fstar = I - bw;
 fstar(fstar < 0) = 0;
 filter = [0 1 0; 1 0 1; 0 1 0];
-sum_fstar_boundary = imfilter(fstar, filter, 'replicate');
-fstar_val_boundary = sum_fstar_boundary(domain_index);
+sum_fstar = imfilter(fstar, filter, 'replicate');
+fstar_val = sum_fstar(target_index);
 
-b = fstar_val_boundary;
+b = v_val + fstar_val;
 
-%% building A
+%% COMPUTING A
 % Ugly for loop for adjacency
 dim = size(bw_col, 1);
 A = zeros(dim);
@@ -29,6 +34,7 @@ A = zeros(dim);
 
 coor = [bw_row, bw_col];
 
+% THIS IS WRONG
 for x = 1:w
     for y = 1:l
         if (bw(x, y) == 1)
@@ -53,23 +59,9 @@ for x = 1:w
     end
 end
 
-%% Solving the LSE
 A = A + diag(ones(1,dim)*4);
 x = sparse(A)\b;
+I(target_index) = x;
 
-
-%% RESULT
-I(domain_index) = x;
-figure 
-subplot(1,2,1)
-imagesc(I_orig)
-colormap gray;
-axis image
-title('Original image')
-subplot(1,2,2)
 imagesc(I)
-colormap gray;
 axis image
-hold on;
-plot(xi, yi)
-title('Edited image')

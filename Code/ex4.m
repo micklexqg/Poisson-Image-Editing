@@ -10,7 +10,13 @@ v_val_source = laplacian_source(source_index);
 v_val_target = laplacian_target(target_index);
 v_val = zeros(size(target_index));
 
-for index = 1:size
+for index = 1:size(target_index, 1)
+    if abs(v_val_target(index)) > abs(v_val_source(index))
+        v_val(index) = v_val_target(index);
+    else 
+        v_val(index) = v_val_source(index);
+    end
+end
 
 v_val = v_val_source;
 
@@ -20,6 +26,15 @@ fstar(fstar < 0) = 0;
 filter = [0 1 0; 1 0 1; 0 1 0];
 sum_fstar = imfilter(fstar, filter, 'replicate');
 fstar_val = sum_fstar(target_index);
+
+b = zeros(size(fstar_val));
+for index = 1:size(fstar_val, 1)
+    if (fstar_val(index) == 0)
+        b(index) = v_val(index);
+    else
+        b(index) = fstar_val(index);
+    end
+end
 
 b = v_val + fstar_val;
 
@@ -59,7 +74,6 @@ A = A + diag(ones(1,dim)*4);
 
 X = sparse(A)\b;
 if (sum(X > 1) ~= 0) 
-    disp(X>1)
     X = X/max(X);
 end
 I_target(target_index) = X;

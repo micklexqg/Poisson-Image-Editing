@@ -10,15 +10,9 @@ v_val_source = laplacian_source(source_index);
 v_val_target = laplacian_target(target_index);
 v_val = zeros(size(target_index));
 
-for index = 1:size(target_index, 1)
-    if abs(v_val_target(index)) > abs(v_val_source(index))
-        v_val(index) = v_val_target(index);
-    else 
-        v_val(index) = v_val_source(index);
-    end
-end
+for index = 1:size
 
-% v_val = v_val_source;
+v_val = v_val_source;
 
 % sum fstar
 fstar = I_target - bw_target;

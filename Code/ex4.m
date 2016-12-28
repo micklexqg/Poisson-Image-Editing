@@ -1,79 +1,97 @@
-function [I_target, sum_fstar] = poissonSolver(I_source, I_target, bw_target, source_index, target_index)
-[bw_row_target, bw_col_target, ~] = find(bw_target);
+close all;
+
+I_target = double(rgb2gray(imread('birds.jpg')))/255;
+I_source = double(rgb2gray(imread('beatles.jpg')))/255;
+% region specification
+[bw_source, xi_source, yi_source] = roipoly(I_source);
+imagesc(I_target)
+[x_target, y_target] = getpts();
+
+diffx = 156 - xi_source(1);
+diffy = 159 - yi_source(1);
+
+xi_target = xi_source + diffx;
+yi_target = yi_source + diffy;
+
+[bw_source_row, bw_source_col, ~] = find(bw_source);
+source_index = sub2ind(size(I_source), bw_source_row, bw_source_col);
+
+bw_target_row = bw_source_row + diffy;
+bw_target_col = bw_source_col + diffx;
+target_index = sub2ind(size(I_target), bw_target_col, bw_target_row);
+
+% create mask for target
+bw_target = zeros(size(I_target));
+bw_target(target_index) = 1;
 
 %% building b
 % guidance field v_pq = g_p - g_q
 filter = [0 -1 0; -1 4 -1; 0 -1 0];
-laplacian_source = imfilter(I_source, filter, 'replicate');
-laplacian_target = imfilter(I_target, filter, 'replicate');
-v_val_source = laplacian_source(source_index);
-v_val_target = laplacian_target(target_index);
-v_val = zeros(size(target_index));
+sum_v_neighbours = imfilter(I_source, filter, 'replicate');
+% extract domain
+v_val = sum_v_neighbours(source_index);
 
-for index = 1:size(target_index, 1)
-    if abs(v_val_target(index)) > abs(v_val_source(index))
-        v_val(index) = v_val_target(index);
-    else 
-        v_val(index) = v_val_source(index);
-    end
-end
-
-v_val = v_val_source;
-
-% sum fstar
+% fstar
 fstar = I_target - bw_target;
 fstar(fstar < 0) = 0;
 filter = [0 1 0; 1 0 1; 0 1 0];
 sum_fstar = imfilter(fstar, filter, 'replicate');
 fstar_val = sum_fstar(target_index);
 
-b = zeros(size(fstar_val));
-for index = 1:size(fstar_val, 1)
-    if (fstar_val(index) == 0)
-        b(index) = v_val(index);
-    else
-        b(index) = fstar_val(index);
-    end
-end
-
 b = v_val + fstar_val;
 
-%% building A
-dim = size(bw_col_target, 1);
+%% COMPUTING A
+% Ugly for loop for adjacency
+dim = size(source_index, 1);
 A = zeros(dim);
-for i_index = 1:numel(target_index)
-    idx = target_index(i_index);
-    [X, y] = ind2sub(size(I_target), idx);
-    if(bw_target(X-1, y) == 1)
-        j_index = target_index == sub2ind(size(I_target), X-1, y);
-        A(i_index, j_index) = -1;
-    end
-    if(bw_target(X, y-1) == 1)
-        j_index = target_index == sub2ind(size(I_target), X, y-1);
-        A(i_index, j_index) = -1;
-    end
-    if(bw_target(X+1, y) == 1)
-        j_index = target_index == sub2ind(size(I_target), X+1, y);
-        A(i_index, j_index) = -1;
-    end
-    if(bw_target(X, y+1) == 1)
-        j_index = target_index == sub2ind(size(I_target), X, y+1);
-        A(i_index, j_index) = -1;
-    end
-end
-A = A + diag(ones(1,dim)*4);
-% filter = [0 1 0; 1 0 1; 0 1 0];
-% n_neighbours = imfilter(double(bw_target), filter, 'replicate');
-% N = n_neighbours(target_index);
-% A = A + diag(ones(1,dim)*4);
-% 
-% 
-% x0 = mean(fstar_val./N)*ones(size(target_index,1), 1);
-% %Solve using conjagant gradient descent
-% X = cgs(sparse(A), b, 1e-7, 200, [], [], x0);
+[w, l, c] = size(I_target);
 
-X = sparse(A)\b;
-if (sum(X > 1) ~= 0) 
-    X = X/max(X);
+coor = [bw_target_row, bw_target_col];
+
+% THIS IS WRONG
+for x = 1:w
+    for y = 1:l
+        if (bw_target(x, y) == 1)
+            i_index = find(ismember(coor,[x,y],'rows'));
+            if(bw_target(x-1, y) == 1)
+                j_index = find(ismember(coor,[x-1, y],'rows'));
+                A(i_index, j_index) = -1;
+            end
+            if(bw_target(x, y-1) == 1)
+                j_index = find(ismember(coor,[x, y-1],'rows'));
+                A(i_index, j_index) = -1;
+            end
+            if(bw_target(x+1, y) == 1)
+                j_index = find(ismember(coor,[x+1, y],'rows'));
+                A(i_index, j_index) = -1;
+            end
+            if(bw_target(x, y+1) == 1)
+                j_index = find(ismember(coor,[x, y+1],'rows'));
+                A(i_index, j_index) = -1;
+            end
+        end
+    end
 end
-I_target(target_index) = X;
+
+A = A + diag(ones(1,dim)*4);
+% A = A + diag(N_val);
+linindx = sub2ind(size(I_target), bw_target_row, bw_target_col);
+x = sparse(A)\b;
+
+%% RESULT
+I_target(target_index) = x;
+figure 
+subplot(1,2,1)
+imagesc(I_source)
+hold on;
+colormap gray;
+axis image
+plot(xi_source, yi_source);
+title('Source image')
+subplot(1,2,2)
+imagesc(I_target)
+colormap gray;
+axis image
+hold on;
+plot(xi_target, yi_target)
+title('Target image')

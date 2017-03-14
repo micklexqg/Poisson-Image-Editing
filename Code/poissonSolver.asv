@@ -8,7 +8,7 @@ bw_target_inv = 1 - bw_target;
 bw_target_inv(bw_target_inv < 0) = 0;
 
 %% building b
-mixing = 0;
+
 v_val = zeros(size(target_index));
 for i_index = 1:numel(target_index)
     idx_target = target_index(i_index);
@@ -18,28 +18,67 @@ for i_index = 1:numel(target_index)
     [x_source, y_source] = ind2sub(size(I_source), idx_source);
     
     sum_grad = 0;
-    if (abs(I_target(x_target, y_target)-I_target(x_target-1, y_target))*mixing > abs(I_source(x_source, y_source)-I_source(x_source-1, y_source)))
+    if (abs(I_target(x_target, y_target)-I_target(x_target-1, y_target)) > abs(I_source(x_source, y_source)-I_source(x_source-1, y_source)))
         sum_grad = sum_grad + I_target(x_target, y_target) - I_target(x_target-1, y_target);
     else
         sum_grad = sum_grad + I_source(x_source, y_source) - I_source(x_source-1, y_source);
     end
-    if (abs(I_target(x_target, y_target)-I_target(x_target, y_target-1))*mixing > abs(I_source(x_source, y_source)-I_source(x_source, y_source-1)))
+    if (abs(I_target(x_target, y_target)-I_target(x_target, y_target-1)) > abs(I_source(x_source, y_source)-I_source(x_source, y_source-1)))
         sum_grad = sum_grad + I_target(x_target, y_target)-I_target(x_target, y_target-1);
     else
         sum_grad = sum_grad + I_source(x_source, y_source)-I_source(x_source, y_source-1);
     end
-    if (abs(I_target(x_target, y_target)-I_target(x_target+1, y_target))*mixing > abs(I_source(x_source, y_source)-I_source(x_source+1, y_source)))
+    if (abs(I_target(x_target, y_target)-I_target(x_target+1, y_target)) > abs(I_source(x_source, y_source)-I_source(x_source+1, y_source)))
         sum_grad = sum_grad + I_target(x_target, y_target)-I_target(x_target+1, y_target);
     else
         sum_grad = sum_grad + I_source(x_source, y_source)-I_source(x_source+1, y_source);
     end
-    if (abs(I_target(x_target, y_target)-I_target(x_target, y_target+1))*mixing > abs(I_source(x_source, y_source)-I_source(x_source, y_source+1)))
+    if (abs(I_target(x_target, y_target)-I_target(x_target, y_target+1)) > abs(I_source(x_source, y_source)-I_source(x_source, y_source+1)))
         sum_grad = sum_grad + I_target(x_target, y_target)-I_target(x_target, y_target+1);
     else
         sum_grad = sum_grad + I_source(x_source, y_source)-I_source(x_source, y_source+1);
     end
     v_val(i_index) = sum_grad;
 end
+
+% % I_target_mask = I_target - bw_target_inv;
+% % I_target_mask(I_target_mask < 0) = 0;
+% I_target_pad = padarray(I_target, [1, 1], 'replicate');
+% v_val_target = zeros(size(target_index));
+% for i_index = 1:numel(target_index)
+%     idx_target = target_index(i_index);
+%     [x_target, y_target] = ind2sub(size(I_target), idx_target);
+%     x_target = x_target+1;
+%     y_target = y_target+1;
+%     sum_grad = 0;
+%     if (I_target_pad(x_target-1, y_target) ~= 0)
+%         sum_grad = sum_grad + I_target_pad(x_target,y_target) - I_target_pad(x_target-1, y_target);
+%     end
+%     if (I_target_pad(x_target, y_target-1) ~= 0)
+%         sum_grad = sum_grad + I_target_pad(x_target,y_target) - I_target_pad(x_target, y_target-1);
+%     end
+%     if (I_target_pad(x_target+1, y_target) ~= 0)
+%         sum_grad = sum_grad + I_target_pad(x_target,y_target) - I_target_pad(x_target+1, y_target);
+%     end
+%     if (I_target_pad(x_target, y_target+1) ~= 0)
+%         sum_grad = sum_grad + I_target_pad(x_target,y_target) - I_target_pad(x_target, y_target+1);
+%     end
+%     v_val_target(i_index) = sum_grad;
+% end
+
+% v_val = zeros(size(target_index));
+% 
+% % mixing the gradients
+% for index = 1:size(target_index, 1)
+%     if abs(v_val_target(index)) > abs(v_val_source(index))
+%         v_val(index) = v_val_target(index);
+%     else 
+%         v_val(index) = v_val_source(index);
+%     end
+% end
+% 
+% % not mixing the gradients
+% v_val = v_val_source;
 
 % sum fstar
 fstar = I_target - bw_target;

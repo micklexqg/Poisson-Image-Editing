@@ -1,12 +1,12 @@
 close all;
 clear workspace;
 
-I_target = double(imread('julien.jpg'))/255;
+I_target = double(imread('mona.jpg'))/255;
 I_target_r = I_target(:,:,1);
 I_target_g = I_target(:,:,2);
 I_target_b = I_target(:,:,3);
 
-I_source = double(imread('dog_face.jpg'))/255;
+I_source = double(imread('mona.jpg'))/255;
 I_source_r = I_source(:,:,1);
 I_source_g = I_source(:,:,2);
 I_source_b = I_source(:,:,3);
@@ -15,27 +15,16 @@ I_source_b = I_source(:,:,3);
 [bw_source, xi_source, yi_source] = roipoly(I_source);
 [bw_row, bw_col, ~] = find(bw_source);
 
-% place region in target
-figure
-imagesc(I_target)
-[x_target, y_target] = getpts();
-
-diffx = round(y_target) - bw_row(1);
-diffy = round(x_target) - bw_col(1);
-
-xi_target = xi_source + diffy;
-yi_target = yi_source + diffx;
-
 % shift region from source to target
 source_index = sub2ind(size(I_source_r), bw_row, bw_col);
-target_index = sub2ind(size(I_target_r), bw_row + diffx, bw_col + diffy);
+target_index = sub2ind(size(I_target_r), bw_row, bw_col);
 bw_target = zeros(size(I_target_r));
 bw_target(target_index) = 1;
 
 % solve the poisson for every for each color componente seperately
-[I_r, sum_fstar_r] = poissonSolver(I_source_r, I_target_r, bw_target, source_index, target_index);
-[I_g, sum_fstar_g] = poissonSolver(I_source_g, I_target_g, bw_target, source_index, target_index);
-[I_b, sum_fstar_b] = poissonSolver(I_source_b, I_target_b, bw_target, source_index, target_index);
+[I_r, sum_fstar_r] = poissonSolver_selection(I_source_r, I_target_r, bw_target, source_index, target_index);
+[I_g, sum_fstar_g] = poissonSolver_selection(I_source_g, I_target_g, bw_target, source_index, target_index);
+[I_b, sum_fstar_b] = poissonSolver_selection(I_source_b, I_target_b, bw_target, source_index, target_index);
 I = cat(3, I_r, I_g, I_b);
 
 imagesc(I)
@@ -56,7 +45,4 @@ imagesc(I)
 colormap gray;
 axis image
 hold on;
-plot(xi_target, yi_target)
 title('Target image')
-
-% imwrite(I, 'experiment1.jpg');
